@@ -1,0 +1,28 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat">
+        <item name="colorPrimary">@color/myspotify_pink</item>
+        <item name="colorPrimaryDark">@color/myspotify_dark_pink</item>
+        <item name="android:windowBackground">@color/myspotify_dark_gray</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="MySpotifyTheme" parent="AppTheme">
+        <item name="actionBarStyle">@style/ActionBar.Solid.SpotifyStreamer.NoTitle</item>
+    </style>
+
+    <!-- main activity action bar styles -->
+    <style name="ActionBar.Solid.SpotifyStreamer.NoTitle" parent="@style/Widget.AppCompat.Light.ActionBar.Solid.Inverse">
+        <!--<item name="displayOptions">useLogo|showHome</item>
+        <item name="logo">@drawable/ic_logo</item>-->
+    </style>
+    <style name="TextView.SpotifyStreamer" parent="@android:style/TextAppearance.Small">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColorHint">#999</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:background">#222</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:radius">3dp</item>
+    </style>
+</resources>

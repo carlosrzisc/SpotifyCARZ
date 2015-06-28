@@ -1,0 +1,25 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    tools:context="com.owlbyte.spotifystreamer.ArtistsFragment"
+    android:orientation="vertical">
+
+    <EditText
+        android:id="@+id/txt_search_artist"
+        android:hint="@string/search_artist_label"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:layout_marginBottom="5dp"
+        style="@style/TextView.SpotifyStreamer"/>
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/artist_list"
+        android:scrollbars="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>

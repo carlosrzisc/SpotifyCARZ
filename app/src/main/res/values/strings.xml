@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Spotify Streamer</string>
+
+    <string name="hello_world">Spotify streamer</string>
+    <string name="action_settings">Settings</string>
+    <string name="btn_spotityapp">SPOTIFY STREAMER</string>
+    <string name="title_activity_spotify_streamer">Spotify Streamer</string>
+    <string name="search_artist_label">Search artist</string>
+    <string name="title_activity_tracks">Top 10 Tracks</string>
+    <string name="artist_notfound">Artist was not found, please try again</string>
+    <string name="tracks_notfound">No tracks were found for selected artist, please go back and select another artist</string>
+    <string name="no_connecion">Error retrieving data, check you are online and try again</string>
+    <string name="title_activity_playback">Music Playback</string>
+    <string name="playback_album_image">Album image</string>
+</resources>
