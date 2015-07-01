@@ -19,7 +19,6 @@ import java.util.Map;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
-import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.ArtistSimple;
 import kaaes.spotify.webapi.android.models.Image;
 import kaaes.spotify.webapi.android.models.Track;
@@ -32,6 +31,7 @@ public class TopTracksFragment extends Fragment {
 
     private static final String LOG_TAG = TopTracksFragment.class.getName();
     private CustomListAdapter mCustomAdapter;
+    public static String TOP_TRACKS_KEY = "com.owlbyte.spotofiystreamer.TopTracksFragment.TOP_TRACKS_KEY";
 
     private List<USpotifyObject> listResult;
 
@@ -50,10 +50,7 @@ public class TopTracksFragment extends Fragment {
         mCustomAdapter.SetOnItemClickListener(new CustomListAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
-                Intent playbackIntent = new Intent(getActivity(), PlaybackActivity.class);
-                playbackIntent.putParcelableArrayListExtra("topTracks", (ArrayList)listResult);
-                playbackIntent.putExtra(Intent.EXTRA_TEXT, "" + position);
-                startActivity(playbackIntent);
+                ((Callback) getActivity()).onTrackItemSelected(position, listResult);
             }
         });
 
@@ -64,9 +61,15 @@ public class TopTracksFragment extends Fragment {
         mRecyclerView.setAdapter(mCustomAdapter);
 
         if (savedInstanceState == null) {
+            String artistParameter;
+            Bundle arguments = getArguments();
+            if (arguments != null) {
+                artistParameter = arguments.getString(TOP_TRACKS_KEY);
+                new FetchTracksTask().execute(artistParameter);
+            }
             if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
-                String mArtist = intent.getStringExtra(Intent.EXTRA_TEXT);
-                new FetchTracksTask().execute(mArtist);
+                artistParameter = intent.getStringExtra(Intent.EXTRA_TEXT);
+                new FetchTracksTask().execute(artistParameter);
             }
         }
         return rootView;
@@ -164,5 +167,17 @@ public class TopTracksFragment extends Fragment {
                 Toast.makeText(getActivity(), R.string.artist_notfound, Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callback {
+        /**
+         * Show top tracks when an item has been selected.
+         */
+        void onTrackItemSelected(int position, List<USpotifyObject> tracks);
     }
 }

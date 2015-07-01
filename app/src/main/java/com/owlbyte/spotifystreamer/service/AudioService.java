@@ -1,6 +1,8 @@
 package com.owlbyte.spotifystreamer.service;
 
+import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,11 +14,14 @@ import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.owlbyte.spotifystreamer.AudioFocusHelper;
+import com.owlbyte.spotifystreamer.PlaybackActivity;
 import com.owlbyte.spotifystreamer.PlaybackFragment;
+import com.owlbyte.spotifystreamer.R;
 
 import java.io.IOException;
 
@@ -36,9 +41,10 @@ public class AudioService extends Service implements
     MediaPlayer mMediaPlayer;
     WifiManager.WifiLock mWifiLock;
     NotificationManager mNotificationManager;
-//    Notification mNotification = null;
+    Notification mNotification = null;
+    String mSongTitle = "Title TODO";
     private AudioFocusHelper mAudioFocusHelper;
-//    final int NOTIFICATION_ID = 1;
+    final int NOTIFICATION_ID = 1;
     private boolean mIsStreaming;
 
     public static final String ACTION_TOGGLE_PLAYBACK = "com.owlbyte.spotifystreamer.action.TOGGLE_PLAYBACK";
@@ -140,7 +146,7 @@ public class AudioService extends Service implements
         } else*/ if (mState == State.Paused) {
             // If we're paused, just continue playback and restore the 'foreground service' state.
             mState = State.Playing;
-            //setUpAsForeground(mSongTitle + " (playing)");
+            setUpAsForeground(mSongTitle + " (playing)");
             configAndStartMediaPlayer();
         }
     }
@@ -160,8 +166,8 @@ public class AudioService extends Service implements
                 PlaybackFragment.BROADCAST_SEEKBAR));
         tryToGetAudioFocus();
         mState = State.Playing;
-        //setUpAsForeground(mSongTitle + " (playing)");
         playNextSong(intent.getData().toString());
+        setUpAsForeground(mSongTitle + " (playing)");
         initTrackProgressHandler();
     }
 
@@ -214,23 +220,26 @@ public class AudioService extends Service implements
             mAudioFocus = AudioFocus.Focused;
     }
 
-//    /**
-//     * Configures service as a foreground service. A foreground service is a service that's doing
-//     * something the user is actively aware of (such as playing music), and must appear to the
-//     * user as a notification. That's why we create the notification here.
-//     */
-//    void setUpAsForeground(String text) {
-//        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-//                new Intent(getApplicationContext(), PlaybackActivity.class),
-//                PendingIntent.FLAG_UPDATE_CURRENT);
-//        mNotification = new Notification();
-//        mNotification.tickerText = text;
-//        // TODO mNotification.icon = R.drawable.ic_stat_playing;
-//        mNotification.flags |= Notification.FLAG_ONGOING_EVENT;
-//        mNotification.setLatestEventInfo(getApplicationContext(), "Spotify Streamer",
-//                text, pi);
-//        startForeground(NOTIFICATION_ID, mNotification);
-//    }
+    /**
+     * Configures service as a foreground service. A foreground service is a service that's doing
+     * something the user is actively aware of (such as playing music), and must appear to the
+     * user as a notification. That's why we create the notification here.
+     */
+    void setUpAsForeground(String text) {
+        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+                new Intent(getApplicationContext(), PlaybackActivity.class),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        String title = "Spotify Streamer";
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                this);
+        mNotification = builder.setContentIntent(pi)
+                .setSmallIcon(R.drawable.ic_stat_playing).setTicker(text)
+                .setAutoCancel(true).setContentTitle(title)
+                .setContentText(text).build();
+
+        startForeground(NOTIFICATION_ID, mNotification);
+    }
 
     /**
      * Starts playing the next song. If manualUrl is null, the next song will be randomly selected
@@ -239,11 +248,6 @@ public class AudioService extends Service implements
      * next.
      */
     void playNextSong(String manualUrl) {
-//        if (null == manualUrl || manualUrl.isEmpty()) {
-//            manualUrl = previewUrl;
-//        }
-
-        //manualUrl = "http://d318706lgtcm8e.cloudfront.net/mp3-preview/f454c8224828e21fa146af84916fd22cb89cedc6";
         mState = State.Stopped;
         relaxResources(false); // release everything except MediaPlayer
         try {
@@ -254,6 +258,10 @@ public class AudioService extends Service implements
                 mMediaPlayer.setDataSource(manualUrl);
                 mIsStreaming = true;
             }
+
+            // mSongTitle = playingItem.getTitle(); TODO
+            setUpAsForeground(mSongTitle + " (loading)");
+
             // starts preparing the media player in the background. When it's done, it will call
             // our OnPreparedListener (that is, the onPrepared() method on this class, since we set
             // the listener to 'this').
@@ -299,18 +307,18 @@ public class AudioService extends Service implements
     public void onPrepared(MediaPlayer mediaPlayer) {
         // The media player is done preparing. That means we can start playing!
         mState = State.Playing;
-//        updateNotification(mSongTitle + " (playing)");
+        updateNotification(mSongTitle + " (playing)");
         configAndStartMediaPlayer();
     }
 
-//    /** Updates the notification. */   TODO
-//    void updateNotification(String text) {
-//        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-//                new Intent(getApplicationContext(), PlaybackActivity.class),
-//                PendingIntent.FLAG_UPDATE_CURRENT);
-//        mNotification.setLatestEventInfo(getApplicationContext(), "Spotify streamer ", text, pi);
-//        mNotificationManager.notify(NOTIFICATION_ID, mNotification);
-//    }
+    /** Updates the notification. */
+    void updateNotification(String text) {
+        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+                new Intent(getApplicationContext(), PlaybackActivity.class),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        mNotification.setLatestEventInfo(getApplicationContext(), "Spotify streamer ", text, pi);
+        mNotificationManager.notify(NOTIFICATION_ID, mNotification);
+    }
 
     @Override
     public IBinder onBind(Intent intent) {

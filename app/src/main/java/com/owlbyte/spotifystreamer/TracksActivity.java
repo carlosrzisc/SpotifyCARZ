@@ -1,16 +1,31 @@
 package com.owlbyte.spotifystreamer;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 
-import com.owlbyte.spotifystreamer.R;
+import java.util.ArrayList;
+import java.util.List;
 
-public class TracksActivity extends AppCompatActivity {
+public class TracksActivity extends AppCompatActivity implements TopTracksFragment.Callback {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tracks);
+        if(savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.toptracks_container, new TopTracksFragment())
+                    .commit();
+        }
+    }
+
+    @Override
+    public void onTrackItemSelected(int position, List<USpotifyObject> tracks) {
+        Intent playbackIntent = new Intent(this, PlaybackActivity.class);
+        playbackIntent.putParcelableArrayListExtra(PlaybackFragment.TRACKS_KEY, (ArrayList)tracks);
+        playbackIntent.putExtra(Intent.EXTRA_TEXT, "" + position);
+        startActivity(playbackIntent);
     }
 
 

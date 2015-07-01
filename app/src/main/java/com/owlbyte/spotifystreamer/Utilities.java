@@ -1,17 +1,16 @@
 package com.owlbyte.spotifystreamer;
 
 /**
- * Created by carlos on 6/26/15.
+ * Utilities class
  */
 public class Utilities {
     /**
-     * Function to convert milliseconds time to
-     * Timer Format
+     * Converts milliseconds to time format
      * Hours:Minutes:Seconds
      * */
     public static String milliSecondsToTimer(long milliseconds){
         String finalTimerString = "";
-        String secondsString = "";
+        String secondsString;
 
         // Convert total duration into time
         int hours = (int)( milliseconds / (1000*60*60));
@@ -26,7 +25,8 @@ public class Utilities {
         if(seconds < 10){
             secondsString = "0" + seconds;
         }else{
-            secondsString = "" + seconds;}
+            secondsString = "" + seconds;
+        }
 
         finalTimerString = finalTimerString + minutes + ":" + secondsString;
 

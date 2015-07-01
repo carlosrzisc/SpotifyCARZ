@@ -12,7 +12,7 @@ public class PlaybackActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_playback);
-//        if (savedInstanceState != null) {
+        if (savedInstanceState == null) {
             Bundle arguments = new Bundle();
             arguments.putParcelableArrayList(
                     PlaybackFragment.TRACKS_KEY,
@@ -24,7 +24,7 @@ public class PlaybackActivity extends AppCompatActivity {
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.playback_container, fragment)
                     .commit();
-//        }
+        }
     }
 
 

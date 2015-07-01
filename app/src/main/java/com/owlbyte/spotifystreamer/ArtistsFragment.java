@@ -1,6 +1,5 @@
 package com.owlbyte.spotifystreamer;
 
-import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
@@ -53,10 +52,10 @@ public class ArtistsFragment extends Fragment implements View.OnKeyListener {
         mCustomAdapter.SetOnItemClickListener(new CustomListAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
-                Intent intent = new Intent(getActivity(), TracksActivity.class);
                 USpotifyObject mSObject = mCustomAdapter.get(position);
-                intent.putExtra(Intent.EXTRA_TEXT, "" + mSObject.getId());
-                startActivity(intent);
+                if (mSObject != null) {
+                    ((Callback) getActivity()).onArtistItemSelected(mSObject.getId());
+                }
             }
         });
         mRecyclerView.setAdapter(mCustomAdapter);
@@ -157,5 +156,17 @@ public class ArtistsFragment extends Fragment implements View.OnKeyListener {
                 Toast.makeText(getActivity(), getString(R.string.artist_notfound), Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callback {
+        /**
+         * Show top tracks when an item has been selected.
+         */
+        void onArtistItemSelected(String itemId);
     }
 }

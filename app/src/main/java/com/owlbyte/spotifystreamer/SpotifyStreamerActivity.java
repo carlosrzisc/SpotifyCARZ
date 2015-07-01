@@ -1,19 +1,32 @@
 package com.owlbyte.spotifystreamer;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Menu;
-import android.view.MenuItem;
 
-import com.owlbyte.spotifystreamer.R;
+import java.util.ArrayList;
+import java.util.List;
 
+public class SpotifyStreamerActivity extends AppCompatActivity implements ArtistsFragment.Callback, TopTracksFragment.Callback {
 
-public class SpotifyStreamerActivity extends AppCompatActivity {
+    private static final String TOPTRACKSFRAGMENT_TAG = "TTF_TAG";
+    private boolean mTwoPaneView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_spotify_streamer);
+
+        if (findViewById(R.id.toptracks_container) != null) {
+            mTwoPaneView = true;
+            if (savedInstanceState == null) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.toptracks_container, new TopTracksFragment(), TOPTRACKSFRAGMENT_TAG)
+                        .commit();
+            }
+        } else {
+            mTwoPaneView = false;
+        }
     }
 
     // NOTE: THE FOLLOWING TWO METHODS ARE COMMENTED OUT BECAUSE MENUS ARE NOT NEEDED FOR STAGE 1
@@ -40,4 +53,32 @@ public class SpotifyStreamerActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }*/
+
+    @Override
+    public void onArtistItemSelected(String itemId){
+        if (mTwoPaneView) {
+            Bundle args = new Bundle();
+            args.putString(TopTracksFragment.TOP_TRACKS_KEY, itemId);
+            TopTracksFragment fragment = new TopTracksFragment();
+            fragment.setArguments(args);
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.toptracks_container, fragment, TOPTRACKSFRAGMENT_TAG)
+                    .commit();
+        } else {
+            Intent intent = new Intent(this, TracksActivity.class);
+            intent.putExtra(Intent.EXTRA_TEXT, "" + itemId);
+            startActivity(intent);
+        }
+    }
+
+    @Override
+    public void onTrackItemSelected(int position, List<USpotifyObject> tracks) {
+        Bundle args = new Bundle();
+        args.putParcelableArrayList(PlaybackFragment.TRACKS_KEY, (ArrayList)tracks);
+        args.putInt(PlaybackFragment.POSITION_KEY, position);
+
+        PlaybackFragment dialogFragment = new PlaybackFragment();
+        dialogFragment.setArguments(args);
+        dialogFragment.show(getSupportFragmentManager(), "playbackDialog");
+    }
 }

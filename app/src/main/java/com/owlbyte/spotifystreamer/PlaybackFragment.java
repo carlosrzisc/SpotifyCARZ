@@ -5,11 +5,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
-import android.support.v4.app.Fragment;
+import android.support.v4.app.DialogFragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -24,8 +25,7 @@ import java.util.List;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class PlaybackFragment extends Fragment implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
-    public static final String TRACKS_KEY = "topTracks";
+public class PlaybackFragment extends DialogFragment implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
 
     private TextView txtArtist;
     private TextView txtAlbum;
@@ -33,51 +33,60 @@ public class PlaybackFragment extends Fragment implements View.OnClickListener, 
     private TextView txtTrack;
     private SeekBar seekBarMedia;
     private TextView txtTrackDuration;
+    private TextView txtTrackProgress;
     private Button btnTogglePlayback;
 
-    private boolean isPlaying = false;
+    private boolean isPlaying = true;
     private int songIndex = 0;
-
     private List<USpotifyObject> topTracks;
-
+    public static final String SONG_INDEX_KEY = "SONG_INDEX_KEY";
+    public static final String TRACKS_KEY = "topTracks";
+    public static final String POSITION_KEY = "position";
     public static final String BROADCAST_SEEKBAR = "com.owlbyte.spotifystreamer.MOVE_TRACK_POSITION";
 
-    public PlaybackFragment() {
-    }
+    public PlaybackFragment() { }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        if (getDialog() != null) {
+            getDialog().getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        }
         View rootView = inflater.inflate(R.layout.fragment_playback, container, false);
         initUIComponents(rootView);
-
-        songIndex = 0;
-        Intent intent = getActivity().getIntent();
-        if (savedInstanceState == null) {
-            if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
-                songIndex = Integer.parseInt(intent.getStringExtra(Intent.EXTRA_TEXT));
-            }
-        }
         Bundle arguments = getArguments();
         if (arguments != null) {
             topTracks = arguments.getParcelableArrayList(TRACKS_KEY);
         }
-        setCurrentSong(songIndex);
-        Button togglePlaybackButton = (Button) rootView.findViewById(R.id.btn_media_toggle_playback);
-        Button nextButton = (Button) rootView.findViewById(R.id.btn_media_next);
-        Button previousButton = (Button) rootView.findViewById(R.id.btn_media_previous);
-        togglePlaybackButton.setOnClickListener(this);
-        nextButton.setOnClickListener(this);
-        previousButton.setOnClickListener(this);
-
+        if (topTracks != null) {
+            if (savedInstanceState == null) {
+                if (arguments != null) {
+                    songIndex = arguments.getInt(POSITION_KEY);
+                }
+                Intent intent = getActivity().getIntent();
+                if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
+                    songIndex = Integer.parseInt(intent.getStringExtra(Intent.EXTRA_TEXT));
+                }
+                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+            }
+            setCurrentSong(songIndex);
+        }
         return rootView;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if(savedInstanceState != null && savedInstanceState.containsKey(SONG_INDEX_KEY)) {
+            songIndex = savedInstanceState.getInt(SONG_INDEX_KEY);
+        }
         getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
                 AudioService.BROADCAST_ACTION));
+    }
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(SONG_INDEX_KEY, songIndex);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -92,35 +101,55 @@ public class PlaybackFragment extends Fragment implements View.OnClickListener, 
         imgAlbum = (ImageView) view.findViewById(R.id.img_playback_album);
         txtTrack = (TextView) view.findViewById(R.id.txt_playback_track);
         txtTrackDuration = (TextView) view.findViewById(R.id.txt_track_duration);
+        txtTrackProgress = (TextView) view.findViewById(R.id.txt_track_progress);
         seekBarMedia = (SeekBar) view.findViewById(R.id.seekBar_media_timeline);
         seekBarMedia.setOnSeekBarChangeListener(this);
         btnTogglePlayback = (Button) view.findViewById(R.id.btn_media_toggle_playback);
-        togglePlaybackButton();
+
+        btnTogglePlayback.setOnClickListener(this);
+        Button nextButton = (Button) view.findViewById(R.id.btn_media_next);
+        Button previousButton = (Button) view.findViewById(R.id.btn_media_previous);
+        nextButton.setOnClickListener(this);
+        previousButton.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.btn_media_next: playNextTrack(); break;
-            case R.id.btn_media_toggle_playback: processTogglePlayback(); break;
-            case R.id.btn_media_previous: playPreviousTrack(); break;
+            case R.id.btn_media_next:
+                playNextTrack();
+                break;
+            case R.id.btn_media_toggle_playback:
+                processTogglePlayback();
+                break;
+            case R.id.btn_media_previous:
+                playPreviousTrack();
+                break;
         }
     }
 
     private void playNextTrack() {
-        if (songIndex == topTracks.size() - 1) {
-            setCurrentSong(0);
-        } else {
-            setCurrentSong(songIndex + 1);
+        if (topTracks != null) {
+            if (songIndex == topTracks.size() - 1) {
+                setCurrentSong(0);
+                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+            } else {
+                setCurrentSong(songIndex + 1);
+                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+            }
         }
         seekBarMedia.setProgress(0);
     }
 
     private void playPreviousTrack() {
-        if (songIndex == 0) {
-            setCurrentSong(topTracks.size() - 1);
-        } else {
-            setCurrentSong(songIndex - 1);
+        if (topTracks != null) {
+            if (songIndex == 0) {
+                setCurrentSong(topTracks.size() - 1);
+                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+            } else {
+                setCurrentSong(songIndex - 1);
+                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+            }
         }
         seekBarMedia.setProgress(0);
     }
@@ -132,19 +161,16 @@ public class PlaybackFragment extends Fragment implements View.OnClickListener, 
                 topTracks.get(index).getLargeImage()).into(imgAlbum);
         txtTrack.setText(topTracks.get(index).getTrackName());
         txtTrackDuration.setText("");
-        setPlaybackTrack(topTracks.get(index).getPreviewUrl());
+        txtTrackProgress.setText("0:00");
         songIndex = index;
     }
 
-    private void setPlaybackTrack(String track){
+    private void setPlaybackTrack(String track) {
         Intent intent = new Intent(getActivity(), AudioService.class);
         intent.setAction(AudioService.ACTION_ADD_TRACK);
         Uri uri = Uri.parse(track);
         intent.setData(uri);
         getActivity().startService(intent);
-
-//        getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
-//                AudioService.BROADCAST_ACTION));
     }
 
     private void processTogglePlayback() {
@@ -182,7 +208,9 @@ public class PlaybackFragment extends Fragment implements View.OnClickListener, 
             txtTrackDuration.setText(Utilities.milliSecondsToTimer(seekMax));
         }
         if (progress != null) {
-            seekBarMedia.setProgress(Integer.parseInt(progress));
+            int currentProgress = Integer.parseInt(progress);
+            seekBarMedia.setProgress(currentProgress);
+            txtTrackProgress.setText(Utilities.milliSecondsToTimer(currentProgress));
         }
         if (hasSongEnded != null && hasSongEnded.equalsIgnoreCase("1")) {
             playNextTrack();
