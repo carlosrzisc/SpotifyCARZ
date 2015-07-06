@@ -38,8 +38,11 @@
             <intent-filter>
                 <action android:name="com.owlbyte.soptifystreamer.action.TOGGLE_PLAYBACK" />
                 <action android:name="com.owlbyte.soptifystreamer.action.PLAY" />
-                <action android:name="com.owlbyte.sporifystreamer.action.PAUSE" />
-                <action android:name="com.owlbyte.spotifystreamer.action.ADD_TRACK" />
+                <action android:name="com.owlbyte.spotifystreamer.action.PAUSE" />
+                <action android:name="com.owlbyte.spotifystreamer.action.NEXT" />
+                <action android:name="com.owlbyte.spotifystreamer.action.PREVIOUS" />
+                <action android:name="com.owlbyte.spotifystreamer.action.UPDATE_UI" />
+                <action android:name="com.owlbyte.spotifystreamer.action.SET_PLAYLIST" />
             </intent-filter>
             <intent-filter>
                 <action android:name="com.owlbyte.spotifystreamer.action.URL" />

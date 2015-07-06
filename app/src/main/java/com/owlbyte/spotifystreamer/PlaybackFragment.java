@@ -4,9 +4,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.Uri;
 import android.support.v4.app.DialogFragment;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,14 +19,20 @@ import android.widget.TextView;
 import com.owlbyte.spotifystreamer.service.AudioService;
 import com.squareup.picasso.Picasso;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
 /**
- * A placeholder fragment containing a simple view.
+ * Fragment for Playback UI, will behave as DialogFragment for tablet and
+ * as a regular Fragment in phones
  */
 public class PlaybackFragment extends DialogFragment implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
 
+    // Log tag
+    private String LOG_TAG = PlaybackFragment.class.getName();
+
+    // UI components
     private TextView txtArtist;
     private TextView txtAlbum;
     private ImageView imgAlbum;
@@ -36,65 +42,116 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
     private TextView txtTrackProgress;
     private Button btnTogglePlayback;
 
-    private boolean isPlaying = true;
+    // Variables
     private int songIndex = 0;
     private List<USpotifyObject> topTracks;
-    public static final String SONG_INDEX_KEY = "SONG_INDEX_KEY";
+
+    // Constants
     public static final String TRACKS_KEY = "topTracks";
     public static final String POSITION_KEY = "position";
-    public static final String BROADCAST_SEEKBAR = "com.owlbyte.spotifystreamer.MOVE_TRACK_POSITION";
+    public static final String CURRENT_TRACK = "current_track";
+    public static final String IS_PLAYING = "is_playing";
+
+    // Braodcast constants
+    public static final String BROADCAST_SEEKBAR = "com.owlbyte.spotifystreamer.action.MOVE_TRACK_POSITION";
 
     public PlaybackFragment() { }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        Log.d(LOG_TAG, "On create view..");
         if (getDialog() != null) {
             getDialog().getWindow().requestFeature(Window.FEATURE_NO_TITLE);
         }
         View rootView = inflater.inflate(R.layout.fragment_playback, container, false);
         initUIComponents(rootView);
-        Bundle arguments = getArguments();
-        if (arguments != null) {
-            topTracks = arguments.getParcelableArrayList(TRACKS_KEY);
-        }
-        if (topTracks != null) {
-            if (savedInstanceState == null) {
-                if (arguments != null) {
-                    songIndex = arguments.getInt(POSITION_KEY);
-                }
+        if (savedInstanceState == null) {
+            Bundle arguments = getArguments();
+            if (arguments != null) {
+                topTracks = arguments.getParcelableArrayList(TRACKS_KEY);
+                songIndex = arguments.getInt(POSITION_KEY);
+            }
+            if (topTracks != null) {
+                // Meaning a track selected manually from user, so we init service with playlist
                 Intent intent = getActivity().getIntent();
                 if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
                     songIndex = Integer.parseInt(intent.getStringExtra(Intent.EXTRA_TEXT));
                 }
-                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
+                initMusicService(topTracks, songIndex);
+            } else {
+                // User might have launched this from either notification or the "now playing" button
+                requestSongInfo();
             }
-            setCurrentSong(songIndex);
+        } else {
+            // User might have rotated view, now attempt to get current track info from service
+            requestSongInfo();
         }
         return rootView;
+    }
+
+    private void requestSongInfo() {
+        Intent audioIntent = new Intent(getActivity(), AudioService.class);
+        audioIntent.setAction(AudioService.ACTION_UPDATE_UI);
+        getActivity().startService(audioIntent);
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(savedInstanceState != null && savedInstanceState.containsKey(SONG_INDEX_KEY)) {
-            songIndex = savedInstanceState.getInt(SONG_INDEX_KEY);
-        }
-        getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
-                AudioService.BROADCAST_ACTION));
-    }
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        outState.putInt(SONG_INDEX_KEY, songIndex);
-        super.onSaveInstanceState(outState);
+        getActivity().registerReceiver(updateSeekBarReceiver, new IntentFilter(
+                AudioService.SEEK_BROADCAST_ACTION));
+        getActivity().registerReceiver(updateUIReceiver, new IntentFilter(
+                AudioService.UPDATE_UI_BROADCAST_ACTION));
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        getActivity().unregisterReceiver(broadcastReceiver);
+        getActivity().unregisterReceiver(updateSeekBarReceiver);
+        getActivity().unregisterReceiver(updateUIReceiver);
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.btn_media_next:
+                playNextTrack();
+                break;
+            case R.id.btn_media_toggle_playback:
+                processTogglePlayback();
+                break;
+            case R.id.btn_media_previous:
+                playPreviousTrack();
+                break;
+        }
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        if (fromUser) {
+            int seekPos = seekBar.getProgress();
+            Intent moveTrackPosIntent = new Intent(BROADCAST_SEEKBAR);
+            moveTrackPosIntent.putExtra("seekpos", seekPos);
+            getActivity().sendBroadcast(moveTrackPosIntent);
+        }
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) { }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) { }
+
+    /**
+     * Initialize UI components in layout
+     * @param view root view
+     */
     private void initUIComponents(View view) {
         txtArtist = (TextView) view.findViewById(R.id.txt_playback_artist);
         txtAlbum = (TextView) view.findViewById(R.id.txt_playback_album);
@@ -113,91 +170,62 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
         previousButton.setOnClickListener(this);
     }
 
-    @Override
-    public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.btn_media_next:
-                playNextTrack();
-                break;
-            case R.id.btn_media_toggle_playback:
-                processTogglePlayback();
-                break;
-            case R.id.btn_media_previous:
-                playPreviousTrack();
-                break;
-        }
-    }
-
+    /**
+     * Sends broadcast to service to play next track in playlist
+     */
     private void playNextTrack() {
-        if (topTracks != null) {
-            if (songIndex == topTracks.size() - 1) {
-                setCurrentSong(0);
-                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
-            } else {
-                setCurrentSong(songIndex + 1);
-                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
-            }
-        }
-        seekBarMedia.setProgress(0);
+        Intent audioIntent = new Intent(getActivity(), AudioService.class);
+        audioIntent.setAction(AudioService.ACTION_PREVIOUS);
+        getActivity().startService(audioIntent);
     }
 
+    /**
+     * Sends broadcast to service to play previous track in playlist
+     */
     private void playPreviousTrack() {
-        if (topTracks != null) {
-            if (songIndex == 0) {
-                setCurrentSong(topTracks.size() - 1);
-                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
-            } else {
-                setCurrentSong(songIndex - 1);
-                setPlaybackTrack(topTracks.get(songIndex).getPreviewUrl());
-            }
+        Intent audioIntent = new Intent(getActivity(), AudioService.class);
+        audioIntent.setAction(AudioService.ACTION_NEXT);
+        getActivity().startService(audioIntent);
+    }
+
+    /**
+     * Starts Audio service sending top tracks as playlist
+     * @param playList list of tracks
+     * @param startSong song index to start playing
+     */
+    private void initMusicService(List<USpotifyObject> playList, int startSong) {
+        if (playList != null && !playList.isEmpty()) {
+            Intent intent = new Intent(getActivity(), AudioService.class);
+            intent.setAction(AudioService.ACTION_SET_PLAYLIST);
+            intent.putParcelableArrayListExtra(PlaybackFragment.TRACKS_KEY, (ArrayList<USpotifyObject>) playList);
+            intent.putExtra(Intent.EXTRA_TEXT, "" + startSong);
+            getActivity().startService(intent);
         }
-        seekBarMedia.setProgress(0);
     }
 
-    private void setCurrentSong(int index) {
-        txtArtist.setText(topTracks.get(index).getArtistName());
-        txtAlbum.setText(topTracks.get(index).getAlbum());
-        Picasso.with(getActivity().getApplicationContext()).load(
-                topTracks.get(index).getLargeImage()).into(imgAlbum);
-        txtTrack.setText(topTracks.get(index).getTrackName());
-        txtTrackDuration.setText("");
-        txtTrackProgress.setText("0:00");
-        songIndex = index;
-    }
-
-    private void setPlaybackTrack(String track) {
-        Intent intent = new Intent(getActivity(), AudioService.class);
-        intent.setAction(AudioService.ACTION_ADD_TRACK);
-        Uri uri = Uri.parse(track);
-        intent.setData(uri);
-        getActivity().startService(intent);
-    }
-
+    /**
+     * Send ACTION_TOGGLE_PLAYBACK command to service
+     */
     private void processTogglePlayback() {
-        togglePlaybackButton();
         Intent audioIntent = new Intent(getActivity(), AudioService.class);
         audioIntent.setAction(AudioService.ACTION_TOGGLE_PLAYBACK);
         getActivity().startService(audioIntent);
     }
 
-    private void togglePlaybackButton() {
-        if (isPlaying) {
-            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_play);
-            isPlaying = false;
-        } else {
-            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_pause);
-            isPlaying = true;
-        }
-    }
-
-    // -- Broadcast Receiver to update position of seekbar from service --
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+    /**
+     * Broadcast Receiver to update position of seekbar from service
+     */
+    private BroadcastReceiver updateSeekBarReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent serviceIntent) {
             updateSeekBar(serviceIntent);
         }
     };
 
+    /**
+     * Updates seekbar progress retrieved from service
+     * @param serviceIntent Music service
+     */
     private void updateSeekBar(Intent serviceIntent) {
         String progress = serviceIntent.getStringExtra("position");
         String trackDuration = serviceIntent.getStringExtra("duration");
@@ -217,24 +245,43 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
         }
     }
 
+    /**
+     * Broadcast Receiver to update playback info
+     */
+    private BroadcastReceiver updateUIReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent serviceIntent) {
+            USpotifyObject currentTrack = serviceIntent.getParcelableExtra(PlaybackFragment.CURRENT_TRACK);
+            setCurrentSong(currentTrack);
+            boolean isPlaying = serviceIntent.getBooleanExtra(PlaybackFragment.IS_PLAYING, true);
+            togglePlaybackButton(isPlaying);
+        }
+    };
 
-    @Override
-    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        if (fromUser) {
-            int seekPos = seekBar.getProgress();
-            Intent moveTrackPosIntent = new Intent(BROADCAST_SEEKBAR);
-            moveTrackPosIntent.putExtra("seekpos", seekPos);
-            getActivity().sendBroadcast(moveTrackPosIntent);
+    /**
+     * Updates Playback UI in app
+     * @param track USpotifyObject
+     */
+    private void setCurrentSong(USpotifyObject track) {
+        if (track != null) {
+            txtArtist.setText(track.getArtistName());
+            txtAlbum.setText(track.getAlbum());
+            Picasso.with(getActivity().getApplicationContext()).load(
+                    track.getLargeImage()).into(imgAlbum);
+            txtTrack.setText(track.getTrackName());
+            //txtTrackDuration.setText("");
+            //txtTrackProgress.setText("0:00");
         }
     }
 
-    @Override
-    public void onStartTrackingTouch(SeekBar seekBar) {
-
-    }
-
-    @Override
-    public void onStopTrackingTouch(SeekBar seekBar) {
-
+    /**
+     * Toggles playback button
+     */
+    private void togglePlaybackButton(boolean isPlaying) {
+        if (isPlaying) {
+            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_pause);
+        } else {
+            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_play);
+        }
     }
 }

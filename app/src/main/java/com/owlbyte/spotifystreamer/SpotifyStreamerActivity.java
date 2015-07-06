@@ -74,7 +74,7 @@ public class SpotifyStreamerActivity extends AppCompatActivity implements Artist
     @Override
     public void onTrackItemSelected(int position, List<USpotifyObject> tracks) {
         Bundle args = new Bundle();
-        args.putParcelableArrayList(PlaybackFragment.TRACKS_KEY, (ArrayList)tracks);
+        args.putParcelableArrayList(PlaybackFragment.TRACKS_KEY, (ArrayList<USpotifyObject>)tracks);
         args.putInt(PlaybackFragment.POSITION_KEY, position);
 
         PlaybackFragment dialogFragment = new PlaybackFragment();

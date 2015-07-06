@@ -12,4 +12,6 @@
     <string name="no_connecion">Error retrieving data, check you are online and try again</string>
     <string name="title_activity_playback">Music Playback</string>
     <string name="playback_album_image">Album image</string>
+    <string name="playback_state_playing">playing</string>
+    <string name="playback_state_paused">paused</string>
 </resources>

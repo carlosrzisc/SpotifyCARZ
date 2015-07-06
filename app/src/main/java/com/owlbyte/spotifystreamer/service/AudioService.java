@@ -8,6 +8,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.wifi.WifiManager;
@@ -22,8 +24,12 @@ import com.owlbyte.spotifystreamer.AudioFocusHelper;
 import com.owlbyte.spotifystreamer.PlaybackActivity;
 import com.owlbyte.spotifystreamer.PlaybackFragment;
 import com.owlbyte.spotifystreamer.R;
+import com.owlbyte.spotifystreamer.USpotifyObject;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Service to handle playing music
@@ -42,15 +48,21 @@ public class AudioService extends Service implements
     WifiManager.WifiLock mWifiLock;
     NotificationManager mNotificationManager;
     Notification mNotification = null;
-    String mSongTitle = "Title TODO";
+    String mSongTitle = "";
+    Bitmap albumImage = null;
     private AudioFocusHelper mAudioFocusHelper;
     final int NOTIFICATION_ID = 1;
     private boolean mIsStreaming;
 
+    private List<USpotifyObject> playList;
+
     public static final String ACTION_TOGGLE_PLAYBACK = "com.owlbyte.spotifystreamer.action.TOGGLE_PLAYBACK";
     public static final String ACTION_PLAY = "com.owlbyte.spotifystreamer.action.PLAY";
     public static final String ACTION_PAUSE = "com.owlbyte.spotifystreamer.action.PAUSE";
-    public static final String ACTION_ADD_TRACK = "com.owlbyte.spotifystreamer.action.ADD_TRACK";
+    public static final String ACTION_NEXT = "com.owlbyte.spotifystreamer.action.NEXT";
+    public static final String ACTION_PREVIOUS = "com.owlbyte.spotifystreamer.action.PREVIOUS";
+    public static final String ACTION_UPDATE_UI = "com.owlbyte.spotifystreamer.action.UPDATE_UI";
+    public static final String ACTION_SET_PLAYLIST = "com.owlbyte.spotifystreamer.action.ADD_TRACK";
 
     // The volume we set the media player to when we lose audio focus, but are allowed to reduce
     // the volume instead of stopping playback.
@@ -58,7 +70,11 @@ public class AudioService extends Service implements
 
     // Seekbar handling
     private final Handler handler = new Handler();
-    public static final String BROADCAST_ACTION = "com.owlbyte.spotifystreamer.action.SEEKBAR_POSITION";
+    public static final String SEEK_BROADCAST_ACTION = "com.owlbyte.spotifystreamer.action.BROADCAST_SEEKBAR_POSITION";
+    private int songIndex;
+
+    // Update UI broadcast action
+    public static final String UPDATE_UI_BROADCAST_ACTION = "com.owlbyte.spotifystreamer.action.BROADCAST_UPDATE_UI";
 
     // indicates the state our service:
     enum State {
@@ -68,7 +84,6 @@ public class AudioService extends Service implements
         // so that we know we have to resume playback once we get focus back)
         Paused      // playback paused (media player ready!)
     }
-
     State mState = State.Stopped;
 
     // do we have audio focus?
@@ -79,6 +94,9 @@ public class AudioService extends Service implements
     }
     AudioFocus mAudioFocus = AudioFocus.NoFocusNoDuck;
 
+    /**
+     * Initialize media Player if needed, otherwise just reset it
+     */
     private void initMediaPlayer() {
         if (mMediaPlayer == null) {
             Log.d(LOG_TAG, "Initializing media player");
@@ -101,7 +119,6 @@ public class AudioService extends Service implements
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
         // create the Audio Focus Helper, if the Audio Focus feature is available (SDK 8 or above)
-
         if (android.os.Build.VERSION.SDK_INT >= 8) {
             mAudioFocusHelper = new AudioFocusHelper(getApplicationContext(), this);
         } else {
@@ -122,13 +139,67 @@ public class AudioService extends Service implements
             case ACTION_TOGGLE_PLAYBACK: processTogglePlaybackRequest(); break;
             case ACTION_PLAY: processPlayRequest(); break;
             case ACTION_PAUSE: processPauseRequest(); break;
-            case ACTION_ADD_TRACK: processAddTrack(intent); break;
+            case ACTION_NEXT: processNextRequest(); break;
+            case ACTION_PREVIOUS: processPreviousRequest(); break;
+            case ACTION_UPDATE_UI: processUpdateUI(mState == State.Playing); break;
+            case ACTION_SET_PLAYLIST: processSetPlaylist(intent); break;
         }
 
         return START_NOT_STICKY; // Means we started the service, but don't want it to
         // restart in case it's killed.
     }
 
+    /**
+     * Broadcast current track info
+     * @param isPlaying Playback state
+     */
+    private void processUpdateUI(boolean isPlaying) {
+        USpotifyObject currentSong = playList.get(songIndex);
+        Intent updateUIIntent = new Intent(UPDATE_UI_BROADCAST_ACTION);
+        updateUIIntent.putExtra(PlaybackFragment.CURRENT_TRACK, currentSong);
+        updateUIIntent.putExtra(PlaybackFragment.IS_PLAYING, isPlaying);
+        sendBroadcast(updateUIIntent);
+    }
+
+    /**
+     * Play previous song in the playlist
+     */
+    private void processPreviousRequest() {
+        mState = State.Playing;
+        if (playList != null) {
+            songIndex = songIndex == 0 ? playList.size() -1 : songIndex--;
+            playNextSong(playList.get(songIndex).getPreviewUrl());
+            mSongTitle = playList.get(songIndex).getTrackName();
+            setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
+            processUpdateUI(true);
+        } else {
+            Toast.makeText(
+                    getApplicationContext(), "Error: There is not a playlist..", Toast.LENGTH_SHORT)
+                    .show();
+        }
+    }
+
+    /**
+     * Play next song in the playlist
+     */
+    private void processNextRequest() {
+        mState = State.Playing;
+        if (playList != null) {
+            songIndex = songIndex == playList.size() - 1 ? 0: songIndex++;
+            playNextSong(playList.get(songIndex).getPreviewUrl());
+            mSongTitle = playList.get(songIndex).getTrackName();
+            setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
+            processUpdateUI(true);
+        } else {
+            Toast.makeText(
+                    getApplicationContext(), "Error: There is not a playlist..", Toast.LENGTH_SHORT)
+                        .show();
+        }
+    }
+
+    /**
+     * Handles toggle playback
+     */
     void processTogglePlaybackRequest() {
         if (mState == State.Paused || mState == State.Stopped) {
             processPlayRequest();
@@ -137,45 +208,67 @@ public class AudioService extends Service implements
         }
     }
 
+    /**
+     * Handles play song request
+     */
     void processPlayRequest() {
         tryToGetAudioFocus();
-        /*if (mState == State.Stopped) {
-            mState = State.Playing;
-            setUpAsForeground(mSongTitle + " (playing)");
-            //playNextSong(null);
-        } else*/ if (mState == State.Paused) {
+        if (mState == State.Paused) {
             // If we're paused, just continue playback and restore the 'foreground service' state.
             mState = State.Playing;
-            setUpAsForeground(mSongTitle + " (playing)");
+            setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
+            processUpdateUI(true);
             configAndStartMediaPlayer();
         }
     }
 
+    /**
+     * Handles pause song request
+     */
     void processPauseRequest() {
         if (mState == State.Playing) {
             // Pause media player and cancel the 'foreground service' state.
             mState = State.Paused;
             mMediaPlayer.pause();
-            relaxResources(false); // while paused, we always retain the MediaPlayer
-            // do not give up audio focus
+            setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_paused) +")", ACTION_PLAY);
+            processUpdateUI(false);
+            relaxResources(false); // while paused, we always retain the MediaPlayer do not give up audio focus
         }
     }
 
-    void processAddTrack(Intent intent) {
-        registerReceiver(broadcastReceiver, new IntentFilter(
+    /**
+     * Retrieves and set playlist in service
+     * @param intent Intent with playlist and start song index as parameters
+     */
+    void processSetPlaylist(Intent intent) {
+        registerReceiver(seekPositionReceiver, new IntentFilter(
                 PlaybackFragment.BROADCAST_SEEKBAR));
         tryToGetAudioFocus();
         mState = State.Playing;
-        playNextSong(intent.getData().toString());
-        setUpAsForeground(mSongTitle + " (playing)");
+
+        if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
+            playList = intent.getParcelableArrayListExtra(PlaybackFragment.TRACKS_KEY);
+            songIndex = Integer.parseInt(intent.getStringExtra(Intent.EXTRA_TEXT));
+        }
+
+        playNextSong(playList.get(songIndex).getPreviewUrl());
+        mSongTitle = playList.get(songIndex).getTrackName();
+        setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
+        processUpdateUI(true);
         initTrackProgressHandler();
     }
 
+    /**
+     * Initialize progress handler
+     */
     private void initTrackProgressHandler() {
         handler.removeCallbacks(updateMediaPlayerUI);
         handler.postDelayed(updateMediaPlayerUI, 1000);
     }
 
+    /**
+     * Runnable to be executed every second and report seek position to application
+     */
     private Runnable updateMediaPlayerUI = new Runnable() {
         public void run() {
             reportMediaPosition();
@@ -183,11 +276,14 @@ public class AudioService extends Service implements
         }
     };
 
+    /**
+     * Creates a broadcast to notify song seek positing to application
+     */
     private void reportMediaPosition() {
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             int mediaPosition = mMediaPlayer.getCurrentPosition();
             int mediaMax = mMediaPlayer.getDuration();
-            Intent seekIntent = new Intent(BROADCAST_ACTION);
+            Intent seekIntent = new Intent(SEEK_BROADCAST_ACTION);
             seekIntent.putExtra("position", String.valueOf(mediaPosition));
             seekIntent.putExtra("duration", String.valueOf(mediaMax));
             seekIntent.putExtra("has_ended", "0");
@@ -195,16 +291,21 @@ public class AudioService extends Service implements
         }
     }
 
-    // --Receive seekbar position if it has been changed by the user in the
-    // activity
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+    /**
+     * Receive seekbar position if it has been changed by the user in the
+     * activity
+     */
+    private BroadcastReceiver seekPositionReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             updateSeekPos(intent);
         }
     };
 
-    // Update seek position from Activity
+    /**
+     * Update seek position from Activity/Fragment
+     * @param intent Fragment that requested to seek position
+     */
     public void updateSeekPos(Intent intent) {
         int seekPos = intent.getIntExtra("seekpos", 0);
         if (mMediaPlayer.isPlaying()) {
@@ -214,6 +315,9 @@ public class AudioService extends Service implements
         }
     }
 
+    /**
+     * Request focus
+     */
     void tryToGetAudioFocus() {
         if (mAudioFocus != AudioFocus.Focused && mAudioFocusHelper != null
                 && mAudioFocusHelper.requestFocus())
@@ -225,20 +329,142 @@ public class AudioService extends Service implements
      * something the user is actively aware of (such as playing music), and must appear to the
      * user as a notification. That's why we create the notification here.
      */
-    void setUpAsForeground(String text) {
+    void setUpAsForeground(String text, String togglePlaybackAction) {
+        Picasso.with(this).load(playList.get(songIndex).getSmallImage()).into(target);
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            mNotification = getNotification(text, togglePlaybackAction);
+        } else {
+            mNotification = getNotificationCompat(text, togglePlaybackAction);
+        }
+        if (mNotification != null) {
+            startForeground(NOTIFICATION_ID, mNotification);
+        }
+    }
+
+    /**
+     * Builds a notification for devices with android os version lower than 21
+     * @param text Notification content text
+     * @param togglePlaybackAction Play/Pause action string constant
+     * @return Notification
+     */
+    private Notification getNotificationCompat(String text, String togglePlaybackAction) {
         PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
                 new Intent(getApplicationContext(), PlaybackActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
-        String title = "Spotify Streamer";
         NotificationCompat.Builder builder = new NotificationCompat.Builder(
                 this);
-        mNotification = builder.setContentIntent(pi)
+        builder.setContentIntent(pi)
                 .setSmallIcon(R.drawable.ic_stat_playing).setTicker(text)
-                .setAutoCancel(true).setContentTitle(title)
-                .setContentText(text).build();
+                .setAutoCancel(true)
+                .setContentTitle(playList.get(songIndex).getArtistName())
+                .setContentText(text);
 
-        startForeground(NOTIFICATION_ID, mNotification);
+        if (albumImage != null) {
+            builder.setLargeIcon(albumImage);
+        }
+
+        builder.addAction(generateActionCompat(android.R.drawable.ic_media_previous, "", ACTION_PREVIOUS));
+        builder.addAction(generateActionCompat(
+                togglePlaybackAction.equalsIgnoreCase(ACTION_PLAY)?
+                        android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause,
+                "", togglePlaybackAction));
+        builder.addAction(generateActionCompat(android.R.drawable.ic_media_next, "", ACTION_NEXT));
+        return builder.build();
+    }
+
+    /**
+     * Builds a notification with support for devices with version equals or greater than 21, to
+     * support controls visibility in lock screen
+     * @param text Notification content text
+     * @param togglePlaybackAction Play/Pause action string constant
+     * @return Notification
+     */
+    private Notification getNotification(String text, String togglePlaybackAction) {
+        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+                new Intent(getApplicationContext(), PlaybackActivity.class),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification.Builder builder = new Notification.Builder(
+                this);
+
+        builder.setContentIntent(pi)
+                .setSmallIcon(R.drawable.ic_stat_playing)
+                .setTicker(text)
+                .setAutoCancel(true)
+                .setContentTitle(playList.get(songIndex).getArtistName())
+                .setContentText(text);
+
+        if (albumImage != null) {
+            builder.setLargeIcon(albumImage);
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            builder
+                    .setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .setStyle(new Notification.MediaStyle()
+                            .setShowActionsInCompactView(0, 1, 2));
+
+            builder.addAction(generateAction(android.R.drawable.ic_media_previous, "", ACTION_PREVIOUS));
+            builder.addAction(generateAction(
+                    togglePlaybackAction.equalsIgnoreCase(ACTION_PLAY) ?
+                            android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause,
+                    "", togglePlaybackAction) );
+            builder.addAction(generateAction(android.R.drawable.ic_media_next, "", ACTION_NEXT));
+            return builder.build();
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Placeholder target to download album Bitmap with Picasso library
+     */
+    private Target target = new Target() {
+        @Override
+        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+            if (bitmap != null) {
+                albumImage = bitmap;
+            }
+        }
+
+        @Override
+        public void onBitmapFailed(Drawable errorDrawable) { }
+
+        @Override
+        public void onPrepareLoad(Drawable placeHolderDrawable) { }
+    };
+
+    /**
+     * Generates a Notification.Action supported in android version 21 or greater
+     * @param icon Action icon
+     * @param title Action title
+     * @param intentAction service intent action
+     * @return Notification.Action
+     */
+    private Notification.Action generateAction( int icon, String title, String intentAction ) {
+        Intent intent = new Intent( getApplicationContext(), AudioService.class );
+        intent.setAction(intentAction);
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, 0);
+        if (android.os.Build.VERSION.SDK_INT >= 20) {
+            return new Notification.Action.Builder(icon, title, pendingIntent).build();
+        }else {
+            return null;
+        }
+    }
+
+    /**
+     * Generates a NotificationCompat.Action supported in android version 20 or lower
+     * @param icon Action icon
+     * @param title Action title
+     * @param intentAction service intent action
+     * @return NotificationCompat.Action
+     */
+    private NotificationCompat.Action generateActionCompat( int icon, String title, String intentAction ) {
+        Intent intent = new Intent( getApplicationContext(), AudioService.class );
+        intent.setAction(intentAction);
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, 0);
+        return new NotificationCompat.Action.Builder(icon, title, pendingIntent).build();
     }
 
     /**
@@ -258,9 +484,7 @@ public class AudioService extends Service implements
                 mMediaPlayer.setDataSource(manualUrl);
                 mIsStreaming = true;
             }
-
-            // mSongTitle = playingItem.getTitle(); TODO
-            setUpAsForeground(mSongTitle + " (loading)");
+            setUpAsForeground( mSongTitle + " (loading)", ACTION_PAUSE );
 
             // starts preparing the media player in the background. When it's done, it will call
             // our OnPreparedListener (that is, the onPrepared() method on this class, since we set
@@ -307,17 +531,9 @@ public class AudioService extends Service implements
     public void onPrepared(MediaPlayer mediaPlayer) {
         // The media player is done preparing. That means we can start playing!
         mState = State.Playing;
-        updateNotification(mSongTitle + " (playing)");
+        setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
+        processUpdateUI(true);
         configAndStartMediaPlayer();
-    }
-
-    /** Updates the notification. */
-    void updateNotification(String text) {
-        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-                new Intent(getApplicationContext(), PlaybackActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        mNotification.setLatestEventInfo(getApplicationContext(), "Spotify streamer ", text, pi);
-        mNotificationManager.notify(NOTIFICATION_ID, mNotification);
     }
 
     @Override
@@ -370,10 +586,7 @@ public class AudioService extends Service implements
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
-        stopSelf();
-        Intent seekIntent = new Intent(BROADCAST_ACTION);
-        seekIntent.putExtra("has_ended", "1");
-        sendBroadcast(seekIntent);
+        processNextRequest();
     }
 
     @Override
@@ -394,18 +607,22 @@ public class AudioService extends Service implements
      */
     void relaxResources(boolean releaseMediaPlayer) {
         // stop being a foreground service
-        stopForeground(true);
+        stopForeground(false);
+
         // stop and release the Media Player, if it's available
         if (releaseMediaPlayer && mMediaPlayer != null) {
             mMediaPlayer.reset();
             mMediaPlayer.release();
             mMediaPlayer = null;
-            unregisterReceiver(broadcastReceiver);
+            unregisterReceiver(seekPositionReceiver);
         }
         // we can also release the Wifi lock, if we're holding it
         if (mWifiLock.isHeld()) mWifiLock.release();
     }
 
+    /**
+     *
+     */
     void giveUpAudioFocus() {
         if (mAudioFocus == AudioFocus.Focused && mAudioFocusHelper != null
                 && mAudioFocusHelper.abandonFocus())

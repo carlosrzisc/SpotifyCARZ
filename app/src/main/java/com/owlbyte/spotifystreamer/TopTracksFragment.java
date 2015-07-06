@@ -91,7 +91,7 @@ public class TopTracksFragment extends Fragment {
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        outState.putParcelableArrayList("artistsKey", (ArrayList)listResult);
+        outState.putParcelableArrayList("artistsKey", (ArrayList<USpotifyObject>)listResult);
         super.onSaveInstanceState(outState);
     }
 
