@@ -50,6 +50,7 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
     // Variables
     private int songIndex = 0;
     private List<USpotifyObject> topTracks;
+    private USpotifyObject currentTrack;
     ShareActionProvider mShareActionProvider;
 
     // Constants
@@ -68,6 +69,12 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
         inflater.inflate(R.menu.playback_fragment, menu);
         MenuItem item = menu.findItem(R.id.action_share);
         mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
+        if (currentTrack != null) {
+            mShareActionProvider.setShareIntent(Utilities.createShareSongIntent(
+                    currentTrack.getArtistName() + " - " +
+                            currentTrack.getTrackName() + " " +
+                            currentTrack.getExternalSpotify()));
+        }
     }
 
     @Override
@@ -266,12 +273,14 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
     private BroadcastReceiver updateUIReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent serviceIntent) {
-            USpotifyObject currentTrack = serviceIntent.getParcelableExtra(PlaybackFragment.CURRENT_TRACK);
+            currentTrack = serviceIntent.getParcelableExtra(PlaybackFragment.CURRENT_TRACK);
             if (getDialog() == null) {
-                mShareActionProvider.setShareIntent(Utilities.createShareSongIntent(
-                        currentTrack.getArtistName() + " - " +
-                                currentTrack.getTrackName() + " " +
-                                currentTrack.getExternalSpotify()));
+                if (mShareActionProvider != null) {
+                    mShareActionProvider.setShareIntent(Utilities.createShareSongIntent(
+                            currentTrack.getArtistName() + " - " +
+                                    currentTrack.getTrackName() + " " +
+                                    currentTrack.getExternalSpotify()));
+                }
             }
             setCurrentSong(currentTrack);
             boolean isPlaying = serviceIntent.getBooleanExtra(PlaybackFragment.IS_PLAYING, true);

@@ -17,6 +17,7 @@ import java.util.List;
 public class TracksActivity extends AppCompatActivity implements TopTracksFragment.Callback {
 
     MenuItem menuNowPlaying;
+    boolean isPlaybackServiceRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +55,9 @@ public class TracksActivity extends AppCompatActivity implements TopTracksFragme
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_tracks, menu);
         menuNowPlaying = menu.findItem(R.id.action_nowplaying);
+        if (isPlaybackServiceRunning) {
+            menuNowPlaying.setVisible(true);
+        }
         return true;
     }
 
@@ -88,6 +92,10 @@ public class TracksActivity extends AppCompatActivity implements TopTracksFragme
     };
 
     private void setNowPlayingButtonVisible() {
-        menuNowPlaying.setVisible(true);
+        if (menuNowPlaying != null) {
+            menuNowPlaying.setVisible(true);
+        } else {
+            isPlaybackServiceRunning = true;
+        }
     }
 }
