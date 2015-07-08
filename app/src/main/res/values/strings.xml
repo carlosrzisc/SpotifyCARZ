@@ -14,4 +14,6 @@
     <string name="playback_album_image">Album image</string>
     <string name="playback_state_playing">playing</string>
     <string name="playback_state_paused">paused</string>
+    <string name="action_now">Now Playing</string>
+    <string name="action_share">Share</string>
 </resources>

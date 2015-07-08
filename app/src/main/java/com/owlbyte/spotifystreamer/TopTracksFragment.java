@@ -105,8 +105,8 @@ public class TopTracksFragment extends Fragment {
             List<USpotifyObject> trackList = null;
             SpotifyApi api = new SpotifyApi();
             SpotifyService spotify = api.getService();
-            Map q = new HashMap();
-            q.put("country", "US");
+            Map q = new HashMap<>();
+            q.put("country", Utilities.getPreferredMarketCountry(getActivity().getApplicationContext()));
             Tracks result = null;
             try {
                 result = spotify.getArtistTopTrack(params[0], q);
@@ -140,7 +140,8 @@ public class TopTracksFragment extends Fragment {
                             largeImage,
                             track.name,
                             track.album.name,
-                            track.preview_url
+                            track.preview_url,
+                            track.external_urls.get("spotify")
                     ));
                 }
             }

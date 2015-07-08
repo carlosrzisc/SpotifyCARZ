@@ -15,12 +15,15 @@ public class USpotifyObject implements Parcelable{
     private String trackName;
     private String album;
     private String previewUrl;
+    private String externalSpotify;
 
     public USpotifyObject(String id, String name, String smallImage) {
-        this(id, name, smallImage, "","", "", "");
+        this(id, name, smallImage, "","", "", "", "");
     }
 
-    public USpotifyObject(String id, String artistName, String smallImage, String largeImage, String trackName, String album, String previewUrl ) {
+    public USpotifyObject(String id, String artistName, String smallImage, String largeImage,
+                          String trackName, String album, String previewUrl,
+                          String externalSpotify) {
         this.id = id;
         this.artistName = artistName;
         this.smallImage = smallImage;
@@ -28,6 +31,7 @@ public class USpotifyObject implements Parcelable{
         this.trackName = trackName;
         this.album = album;
         this.previewUrl = previewUrl;
+        this.externalSpotify = externalSpotify;
     }
 
     public USpotifyObject(Parcel in) {
@@ -38,22 +42,15 @@ public class USpotifyObject implements Parcelable{
         this.trackName = in.readString();
         this.album = in.readString();
         this.previewUrl = in.readString();
+        this.externalSpotify = in.readString();
     }
 
     public String getArtistName() {
         return artistName;
     }
 
-    public void setArtistName(String name) {
-        this.artistName = artistName;
-    }
-
     public String getSmallImage() {
         return smallImage;
-    }
-
-    public void setSmallImage(String image) {
-        this.smallImage = smallImage;
     }
 
     public String getId() {
@@ -66,30 +63,20 @@ public class USpotifyObject implements Parcelable{
 
     public String getTrackName() { return trackName; }
 
-    public void setTrackName(String trackName) { this.trackName = trackName; }
-
     public String getAlbum() {
         return album;
-    }
-
-    public void setAlbum(String album) {
-        this.album = album;
     }
 
     public String getLargeImage() {
         return largeImage;
     }
 
-    public void setLargeImage(String largeImage) {
-        this.largeImage = largeImage;
-    }
-
     public String getPreviewUrl() {
         return previewUrl;
     }
 
-    public void setPreviewUrl(String previewUrl) {
-        this.previewUrl = previewUrl;
+    public String getExternalSpotify() {
+        return externalSpotify;
     }
 
     @Override
@@ -106,6 +93,7 @@ public class USpotifyObject implements Parcelable{
         parcel.writeString(trackName);
         parcel.writeString(album);
         parcel.writeString(previewUrl);
+        parcel.writeString(externalSpotify);
     }
 
     public static final Parcelable.Creator<USpotifyObject> CREATOR = new Parcelable.Creator<USpotifyObject>() {

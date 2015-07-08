@@ -7,14 +7,16 @@
     tools:context="com.owlbyte.spotifystreamer.ArtistsFragment"
     android:orientation="vertical">
 
-    <EditText
+    <android.support.v7.widget.SearchView
         android:id="@+id/txt_search_artist"
-        android:hint="@string/search_artist_label"
+        android:queryHint="@string/search_artist_label"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:inputType="text"
         android:layout_marginBottom="5dp"
-        style="@style/TextView.SpotifyStreamer"/>
+        style="@style/TextView.SpotifyStreamer">
+
+    </android.support.v7.widget.SearchView>
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/artist_list"

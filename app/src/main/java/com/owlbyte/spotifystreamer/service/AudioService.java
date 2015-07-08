@@ -25,6 +25,7 @@ import com.owlbyte.spotifystreamer.PlaybackActivity;
 import com.owlbyte.spotifystreamer.PlaybackFragment;
 import com.owlbyte.spotifystreamer.R;
 import com.owlbyte.spotifystreamer.USpotifyObject;
+import com.owlbyte.spotifystreamer.Utilities;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 
@@ -154,11 +155,13 @@ public class AudioService extends Service implements
      * @param isPlaying Playback state
      */
     private void processUpdateUI(boolean isPlaying) {
-        USpotifyObject currentSong = playList.get(songIndex);
-        Intent updateUIIntent = new Intent(UPDATE_UI_BROADCAST_ACTION);
-        updateUIIntent.putExtra(PlaybackFragment.CURRENT_TRACK, currentSong);
-        updateUIIntent.putExtra(PlaybackFragment.IS_PLAYING, isPlaying);
-        sendBroadcast(updateUIIntent);
+        if (playList != null) {
+            USpotifyObject currentSong = playList.get(songIndex);
+            Intent updateUIIntent = new Intent(UPDATE_UI_BROADCAST_ACTION);
+            updateUIIntent.putExtra(PlaybackFragment.CURRENT_TRACK, currentSong);
+            updateUIIntent.putExtra(PlaybackFragment.IS_PLAYING, isPlaying);
+            sendBroadcast(updateUIIntent);
+        }
     }
 
     /**
@@ -167,7 +170,7 @@ public class AudioService extends Service implements
     private void processPreviousRequest() {
         mState = State.Playing;
         if (playList != null) {
-            songIndex = songIndex == 0 ? playList.size() -1 : songIndex--;
+            songIndex = (songIndex == 0 )? playList.size() -1 : songIndex-1;
             playNextSong(playList.get(songIndex).getPreviewUrl());
             mSongTitle = playList.get(songIndex).getTrackName();
             setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
@@ -185,7 +188,7 @@ public class AudioService extends Service implements
     private void processNextRequest() {
         mState = State.Playing;
         if (playList != null) {
-            songIndex = songIndex == playList.size() - 1 ? 0: songIndex++;
+            songIndex = (songIndex == playList.size() - 1) ? 0: songIndex+1;
             playNextSong(playList.get(songIndex).getPreviewUrl());
             mSongTitle = playList.get(songIndex).getTrackName();
             setUpAsForeground(mSongTitle + " (" + getString(R.string.playback_state_playing) + ")", ACTION_PAUSE );
@@ -331,7 +334,7 @@ public class AudioService extends Service implements
      */
     void setUpAsForeground(String text, String togglePlaybackAction) {
         Picasso.with(this).load(playList.get(songIndex).getSmallImage()).into(target);
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
+        if (android.os.Build.VERSION.SDK_INT >= 21 && Utilities.isNotificationControlsEnabled(getApplicationContext())) {
             mNotification = getNotification(text, togglePlaybackAction);
         } else {
             mNotification = getNotificationCompat(text, togglePlaybackAction);

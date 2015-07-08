@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Enable notification controls preference -->
+    <string name="pref_enable_controls_key" translatable="false">enable_controls</string>
+    <string name="pref_enable_controls_label">Notification controls on lock screen</string>
+    <string name="pref_enable_controls_true">Enabled</string>
+    <string name="pref_enable_controls_false">Not Enabled</string>
+    <string name="pref_enable_controls_default" translatable="false">true</string>
+
+    <!-- Set country preference -->
+    <string name="pref_country_key" translatable="false">country</string>
+    <string name="pref_country_label">Country</string>
+    <string name="pref_country_dialog_title">Select country</string>
+    <string-array name="pref_country_entries">
+        <item>Canada</item>
+        <item>Egypt</item>
+        <item>France</item>
+        <item>Japan</item>
+        <item>Mexico</item>
+        <item>United States of America</item>
+    </string-array>
+    <string-array name="pref_country_values">
+        <item>CA</item>
+        <item>EG</item>
+        <item>FR</item>
+        <item>JP</item>
+        <item>MX</item>
+        <item>US</item>
+    </string-array>
+    <string name="pref_country_us">US</string>
+</resources>

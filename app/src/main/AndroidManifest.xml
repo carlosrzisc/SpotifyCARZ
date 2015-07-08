@@ -3,7 +3,7 @@
     package="com.owlbyte.spotifystreamer" >
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" /> 
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -34,7 +34,9 @@
                 android:value=".TracksActivity" />
         </activity>
 
-        <service android:exported="false" android:name=".service.AudioService">
+        <service
+            android:name=".service.AudioService"
+            android:exported="false" >
             <intent-filter>
                 <action android:name="com.owlbyte.soptifystreamer.action.TOGGLE_PLAYBACK" />
                 <action android:name="com.owlbyte.soptifystreamer.action.PLAY" />
@@ -46,10 +48,12 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="com.owlbyte.spotifystreamer.action.URL" />
+
                 <data android:scheme="http" />
             </intent-filter>
         </service>
-        <receiver android:name=".MusicIntentReceiver">
+
+        <receiver android:name=".MusicIntentReceiver" >
             <intent-filter>
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
             </intent-filter>
@@ -57,6 +61,11 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/title_activity_settings" >
+        </activity>
     </application>
 
 </manifest>

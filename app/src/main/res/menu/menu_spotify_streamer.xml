@@ -2,6 +2,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.owlbyte.udacityportfolio.spotifystreamer.SpotifyStreamerActivity">
+    <item android:id="@+id/action_share"
+        android:title="@string/action_share"
+        android:visible="false"
+        app:showAsAction="always"
+        app:actionProviderClass="android.support.v7.widget.ShareActionProvider"/>
+    <item android:id="@+id/action_nowplaying"
+        android:title="@string/action_now"
+        android:icon="@drawable/ic_stat_playing"
+        android:visible="false"
+        android:orderInCategory="100" app:showAsAction="ifRoom" />
     <item android:id="@+id/action_settings" android:title="@string/action_settings"
         android:orderInCategory="100" app:showAsAction="never" />
 </menu>

@@ -6,8 +6,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.support.v4.app.DialogFragment;
 import android.os.Bundle;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.ShareActionProvider;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -45,6 +50,7 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
     // Variables
     private int songIndex = 0;
     private List<USpotifyObject> topTracks;
+    ShareActionProvider mShareActionProvider;
 
     // Constants
     public static final String TRACKS_KEY = "topTracks";
@@ -58,11 +64,20 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
     public PlaybackFragment() { }
 
     @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.playback_fragment, menu);
+        MenuItem item = menu.findItem(R.id.action_share);
+        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         Log.d(LOG_TAG, "On create view..");
         if (getDialog() != null) {
             getDialog().getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        } else {
+            setHasOptionsMenu(true);
         }
         View rootView = inflater.inflate(R.layout.fragment_playback, container, false);
         initUIComponents(rootView);
@@ -252,6 +267,12 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
         @Override
         public void onReceive(Context context, Intent serviceIntent) {
             USpotifyObject currentTrack = serviceIntent.getParcelableExtra(PlaybackFragment.CURRENT_TRACK);
+            if (getDialog() == null) {
+                mShareActionProvider.setShareIntent(Utilities.createShareSongIntent(
+                        currentTrack.getArtistName() + " - " +
+                                currentTrack.getTrackName() + " " +
+                                currentTrack.getExternalSpotify()));
+            }
             setCurrentSong(currentTrack);
             boolean isPlaying = serviceIntent.getBooleanExtra(PlaybackFragment.IS_PLAYING, true);
             togglePlaybackButton(isPlaying);
@@ -269,8 +290,6 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
             Picasso.with(getActivity().getApplicationContext()).load(
                     track.getLargeImage()).into(imgAlbum);
             txtTrack.setText(track.getTrackName());
-            //txtTrackDuration.setText("");
-            //txtTrackProgress.setText("0:00");
         }
     }
 
@@ -278,10 +297,8 @@ public class PlaybackFragment extends DialogFragment implements View.OnClickList
      * Toggles playback button
      */
     private void togglePlaybackButton(boolean isPlaying) {
-        if (isPlaying) {
-            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_pause);
-        } else {
-            btnTogglePlayback.setBackgroundResource(android.R.drawable.ic_media_play);
-        }
+        btnTogglePlayback.setBackgroundResource(isPlaying ?
+                android.R.drawable.ic_media_pause :
+                android.R.drawable.ic_media_play);
     }
 }
