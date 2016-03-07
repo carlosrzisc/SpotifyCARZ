@@ -7,11 +7,11 @@ This is an android project for the Udacity Android Developer Nanodegree, this ap
 3. Compile and run.
 
 ## Screenshots
-![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen Shot 2016-03-06 at 10.35.22 PM.png)
-![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen Shot 2016-03-06 at 10.36.00 PM.png)
-![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen Shot 2016-03-06 at 10.36.33 PM.png)
-![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen Shot 2016-03-06 at 10.37.28 PM.png)
-![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen Shot 2016-03-06 at 10.38.43 PM.png)
+![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen.Shot.2016-03-06.at.10.35.22.PM.png)
+![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen.Shot.2016-03-06.at.10.36.00.PM.png)
+![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen.Shot.2016-03-06.at.10.36.33.PM.png)
+![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen.Shot.2016-03-06.at.10.37.28.PM.png)
+![alt tag](https://github.com/carlosrzisc/Udacity-Spotify/blob/master/Screen.Shot.2016-03-06.at.10.38.43.PM.png)
 
 ## License
 The content of this repository is licensed under a [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
